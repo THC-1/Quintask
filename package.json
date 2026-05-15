@@ -1,0 +1,18 @@
+{
+  "name": "quintask",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @quintask/api",
+    "dev:api": "npm run dev -w @quintask/api",
+    "dev:web": "npm run dev -w @quintask/web",
+    "build": "npm run build -ws",
+    "test": "npm run test -ws",
+    "lint": "npm run typecheck -ws",
+    "db:generate": "npm run db:generate -w @quintask/api",
+    "db:migrate": "npm run db:migrate -w @quintask/api",
+    "db:seed": "npm run db:seed -w @quintask/api"
+  },
+  "devDependencies": { "typescript": "^5.8.3" }
+}
