@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CommentType, MilestoneStatus, TaskPriority, TaskStatus, UserRole } from "./enums";
+import { CommentType, MilestoneStatus, TaskPriority, TaskStatus, UserRole } from "./enums.js";
 
 export const loginSchema = z.object({
   username: z.string({ required_error: "请输入账号" }).min(1, "请输入账号"),
@@ -7,9 +7,9 @@ export const loginSchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  name: z.string().min(1, "请输入姓名"),
-  username: z.string().min(3, "用户名至少需要 3 个字符"),
-  password: z.string().min(6, "密码至少需要 6 个字符"),
+  name: z.string({ required_error: "请输入姓名" }).min(1, "请输入姓名"),
+  username: z.string({ required_error: "请输入账号" }).min(3, "用户名至少需要 3 个字符"),
+  password: z.string({ required_error: "请输入密码" }).min(6, "密码至少需要 6 个字符"),
   role: z.enum([UserRole.MEMBER, UserRole.TEACHER]).default(UserRole.MEMBER)
 });
 
@@ -20,7 +20,7 @@ export const updateUserSchema = z.object({
 });
 
 export const createMilestoneSchema = z.object({
-  title: z.string().min(1, "请输入里程碑标题"),
+  title: z.string({ required_error: "请输入里程碑标题" }).min(1, "请输入里程碑标题"),
   description: z.string().default(""),
   startDate: z.string().datetime().nullable().optional(),
   dueDate: z.string().datetime().nullable().optional(),
@@ -29,7 +29,7 @@ export const createMilestoneSchema = z.object({
 });
 
 export const createTaskSchema = z.object({
-  title: z.string().min(1, "请输入任务标题"),
+  title: z.string({ required_error: "请输入任务标题" }).min(1, "请输入任务标题"),
   description: z.string().default(""),
   priority: z.nativeEnum(TaskPriority).default(TaskPriority.MEDIUM),
   assigneeId: z.string().nullable().optional(),
@@ -48,7 +48,7 @@ export const changeTaskStatusSchema = z.object({
 });
 
 export const createSubtaskSchema = z.object({
-  title: z.string().min(1, "请输入子任务标题"),
+  title: z.string({ required_error: "请输入子任务标题" }).min(1, "请输入子任务标题"),
   assigneeId: z.string().nullable().optional(),
   sortOrder: z.number().int().min(0).default(0)
 });
@@ -61,12 +61,12 @@ export const updateSubtaskSchema = z.object({
 });
 
 export const createCommentSchema = z.object({
-  content: z.string().min(1, "请输入评论内容"),
+  content: z.string({ required_error: "请输入内容" }).min(1, "请输入评论内容"),
   type: z.nativeEnum(CommentType).default(CommentType.COMMENT)
 });
 
 export const createTagSchema = z.object({
-  name: z.string().min(1, "请输入标签名称"),
+  name: z.string({ required_error: "请输入标签名称" }).min(1, "请输入标签名称"),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#64748b")
 });
 
