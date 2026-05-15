@@ -66,8 +66,16 @@ async function main() {
     },
   });
 
-  const milestone = await prisma.milestone.create({
-    data: {
+  const milestone = await prisma.milestone.upsert({
+    where: { id: "milestone-foundation" },
+    update: {
+      projectId: project.id,
+      title: "第一阶段：基础功能",
+      description: "完成登录、任务看板、成员工作量展示",
+      sortOrder: 1,
+    },
+    create: {
+      id: "milestone-foundation",
       projectId: project.id,
       title: "第一阶段：基础功能",
       description: "完成登录、任务看板、成员工作量展示",
@@ -84,8 +92,20 @@ async function main() {
     skipDuplicates: true,
   });
 
-  await prisma.task.create({
-    data: {
+  await prisma.task.upsert({
+    where: { id: "task-board-page" },
+    update: {
+      projectId: project.id,
+      milestoneId: milestone.id,
+      title: "完成任务看板页面",
+      description: "实现四列看板，并能打开任务详情",
+      status: TaskStatus.TODO,
+      priority: TaskPriority.HIGH,
+      creatorId: owner.id,
+      assigneeId: members[0].id,
+    },
+    create: {
+      id: "task-board-page",
       projectId: project.id,
       milestoneId: milestone.id,
       title: "完成任务看板页面",
