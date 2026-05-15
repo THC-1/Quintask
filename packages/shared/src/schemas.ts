@@ -2,8 +2,8 @@ import { z } from "zod";
 import { CommentType, MilestoneStatus, TaskPriority, TaskStatus, UserRole } from "./enums";
 
 export const loginSchema = z.object({
-  username: z.string().min(1, "请输入用户名"),
-  password: z.string().min(1, "请输入密码")
+  username: z.string({ required_error: "请输入账号" }).min(1, "请输入账号"),
+  password: z.string({ required_error: "请输入密码" }).min(1, "请输入密码")
 });
 
 export const createUserSchema = z.object({
