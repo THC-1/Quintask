@@ -2,7 +2,7 @@
 import type { TaskStatus } from "../stores/tasks";
 
 const props = defineProps<{
-  status: string;
+  status: TaskStatus;
 }>();
 
 const labels: Record<TaskStatus, string> = {
@@ -12,13 +12,10 @@ const labels: Record<TaskStatus, string> = {
   DONE: "已完成",
 };
 
-function statusLabel(status: string) {
-  return labels[status as TaskStatus] ?? status;
-}
 </script>
 
 <template>
   <span class="status-badge" :data-status="props.status">
-    {{ statusLabel(props.status) }}
+    {{ labels[props.status] }}
   </span>
 </template>

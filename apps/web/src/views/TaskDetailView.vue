@@ -15,6 +15,9 @@ const subtaskLoadingId = ref("");
 
 const taskId = computed(() => String(route.params.id));
 const task = computed(() => tasksStore.currentTask);
+const isAssignee = computed(() => task.value?.assignee?.id === auth.user?.id);
+const canMoveAssignedTask = computed(() => auth.isOwner || isAssignee.value);
+const canEditSubtasks = computed(() => !auth.isTeacher && (auth.isOwner || isAssignee.value));
 const isOwnerReview = computed(() => auth.isOwner && task.value?.status === "IN_REVIEW");
 
 const availableActions = computed<Array<{ status: TaskStatus; label: string; tone?: "secondary" }>>(() => {
@@ -22,11 +25,11 @@ const availableActions = computed<Array<{ status: TaskStatus; label: string; ton
     return [];
   }
 
-  if (task.value.status === "TODO") {
+  if (task.value.status === "TODO" && canMoveAssignedTask.value) {
     return [{ status: "IN_PROGRESS", label: "开始处理" }];
   }
 
-  if (task.value.status === "IN_PROGRESS") {
+  if (task.value.status === "IN_PROGRESS" && canMoveAssignedTask.value) {
     return [{ status: "IN_REVIEW", label: "提交验收" }];
   }
 
@@ -84,6 +87,12 @@ async function changeStatus(status: TaskStatus) {
 
 async function updateSubtask(id: string, event: Event) {
   const target = event.target as HTMLInputElement;
+
+  if (!canEditSubtasks.value) {
+    target.checked = !target.checked;
+    return;
+  }
+
   subtaskLoadingId.value = id;
 
   try {
@@ -187,7 +196,7 @@ watch(taskId, () => {
               <input
                 type="checkbox"
                 :checked="subtask.isDone"
-                :disabled="auth.isTeacher || subtaskLoadingId === subtask.id"
+                :disabled="!canEditSubtasks || subtaskLoadingId === subtask.id"
                 @change="updateSubtask(subtask.id, $event)"
               />
               <span :class="{ done: subtask.isDone }">{{ subtask.title }}</span>
