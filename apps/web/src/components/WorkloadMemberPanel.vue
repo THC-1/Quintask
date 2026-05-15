@@ -21,6 +21,9 @@ type WorkloadItem = {
     inReview: number;
     done: number;
     blocked: number;
+    high: number;
+    medium: number;
+    low: number;
   };
   tasks: WorkloadTask[];
 };
@@ -63,9 +66,24 @@ const priorityLabels: Record<TaskPriority, string> = {
         <dt>已完成</dt>
         <dd>{{ props.item.summary.done }}</dd>
       </div>
-      <div>
+      <div class="workload-count-flag" :data-active="props.item.summary.blocked > 0">
         <dt>阻塞</dt>
         <dd>{{ props.item.summary.blocked }}</dd>
+      </div>
+    </dl>
+
+    <dl class="priority-counts">
+      <div class="priority-count-high" :data-active="props.item.summary.high > 0">
+        <dt>高优先级</dt>
+        <dd>{{ props.item.summary.high }}</dd>
+      </div>
+      <div>
+        <dt>中优先级</dt>
+        <dd>{{ props.item.summary.medium }}</dd>
+      </div>
+      <div>
+        <dt>低优先级</dt>
+        <dd>{{ props.item.summary.low }}</dd>
       </div>
     </dl>
 

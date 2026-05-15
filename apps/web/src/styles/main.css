@@ -876,6 +876,49 @@ a {
   font-size: 1.35rem;
 }
 
+.inline-create-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(180px, 1.6fr) minmax(130px, 0.8fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.inline-create-form label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.inline-create-form input,
+.inline-create-form select {
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 10px;
+  border: 1px solid #cbd5d0;
+  border-radius: 6px;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+}
+
+.inline-create-form input:focus,
+.inline-create-form select:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgb(39 122 87 / 14%);
+}
+
+.inline-create-form .form-error {
+  grid-column: 1 / -1;
+}
+
 .workload-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -918,6 +961,13 @@ a {
   margin: 0;
 }
 
+.priority-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
 .workload-counts div {
   min-width: 0;
   padding: 9px;
@@ -926,11 +976,49 @@ a {
   background: #fff;
 }
 
+.priority-counts div {
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid #dfe6e2;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.workload-count-flag[data-active="true"] {
+  border-color: rgb(212 85 63 / 42%);
+  background: rgb(212 85 63 / 9%);
+}
+
+.priority-count-high[data-active="true"] {
+  border-color: rgb(212 85 63 / 34%);
+  background: #fff4ed;
+}
+
 .workload-counts dd {
   margin: 4px 0 0;
   color: var(--ink);
   font-size: 1.1rem;
   font-weight: 900;
+}
+
+.priority-counts dt {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.priority-counts dd {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.workload-count-flag[data-active="true"] dt,
+.workload-count-flag[data-active="true"] dd,
+.priority-count-high[data-active="true"] dt,
+.priority-count-high[data-active="true"] dd {
+  color: #9f321f;
 }
 
 .workload-task-list {
@@ -1045,7 +1133,8 @@ a {
   .summary-grid,
   .milestone-row,
   .workload-grid,
-  .workload-task-row {
+  .workload-task-row,
+  .inline-create-form {
     grid-template-columns: 1fr;
   }
 

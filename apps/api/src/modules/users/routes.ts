@@ -46,6 +46,8 @@ function mapUserWriteError(error: unknown): never {
 userRoutes.use("*", authMiddleware);
 
 userRoutes.get("/", async (c) => {
+  requireOwner(c.get("user").role);
+
   return ok(
     c,
     await prisma.user.findMany({

@@ -57,7 +57,7 @@ async function createGeneratedMember() {
   saving.value = true;
   error.value = "";
 
-  const suffix = String(Date.now()).slice(-4);
+  const suffix = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
   try {
     await apiFetch<Member>("/users", {

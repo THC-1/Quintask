@@ -18,6 +18,9 @@ type WorkloadItem = {
     inReview: number;
     done: number;
     blocked: number;
+    high: number;
+    medium: number;
+    low: number;
   };
   tasks: Array<{
     id: string;
@@ -40,7 +43,20 @@ async function loadWorkload() {
   error.value = "";
 
   try {
-    workload.value = await apiFetch<WorkloadItem[]>("/workload");
+    const items = await apiFetch<WorkloadItem[]>("/workload");
+    workload.value = [...items].sort((left, right) => {
+      const blockedDelta = right.summary.blocked - left.summary.blocked;
+      if (blockedDelta !== 0) {
+        return blockedDelta;
+      }
+
+      const highDelta = right.summary.high - left.summary.high;
+      if (highDelta !== 0) {
+        return highDelta;
+      }
+
+      return right.summary.total - left.summary.total;
+    });
   } catch (value) {
     workload.value = [];
     error.value = toChineseError(value);
