@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 
-import { AppError } from "./errors.js";
+import { AppError, errors } from "./errors.js";
 
 export function ok<T>(c: Context, data: T) {
   return c.json({ data });
@@ -8,6 +8,14 @@ export function ok<T>(c: Context, data: T) {
 
 export function created<T>(c: Context, data: T) {
   return c.json({ data }, 201);
+}
+
+export async function readJson(c: Context) {
+  try {
+    return await c.req.json();
+  } catch {
+    throw errors.validation("请求体必须是合法的 JSON。");
+  }
 }
 
 export function handleError(error: Error, c: Context) {

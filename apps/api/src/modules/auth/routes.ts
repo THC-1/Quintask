@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 
 import { authMiddleware } from "../../middleware/auth.js";
-import { ok } from "../../lib/http.js";
+import { ok, readJson } from "../../lib/http.js";
 import { login } from "./service.js";
 
 export const authRoutes = new Hono();
 
 authRoutes.post("/login", async (c) => {
-  const result = await login(await c.req.json());
+  const result = await login(await readJson(c));
   return ok(c, result);
 });
 
