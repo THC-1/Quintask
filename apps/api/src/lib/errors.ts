@@ -17,7 +17,7 @@ export const errors = {
   notFound: (message = "资源不存在") => new AppError("NOT_FOUND", 404, message),
   validation: (message = "请求参数不正确") => new AppError("VALIDATION_ERROR", 400, message),
   invalidTransition: (message = "任务状态流转不合法") =>
-    new AppError("INVALID_TRANSITION", 400, message),
+    new AppError("INVALID_TASK_TRANSITION", 400, message),
   dependencyBlocked: (message = "依赖任务尚未完成") =>
-    new AppError("DEPENDENCY_BLOCKED", 409, message),
+    new AppError("TASK_DEPENDENCY_BLOCKED", 409, message),
 };
