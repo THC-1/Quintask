@@ -43,5 +43,5 @@ export function canChangeTaskStatus(input: TaskStateChangeInput): TaskStateChang
     return { ok: true };
   }
 
-  return { ok: false, code: "INVALID_TASK_TRANSITION" };
+  return { ok: false, code: "FORBIDDEN" };
 }
