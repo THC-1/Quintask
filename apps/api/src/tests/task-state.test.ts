@@ -16,6 +16,32 @@ describe("canChangeTaskStatus", () => {
     ).toEqual({ ok: true });
   });
 
+  it("prevents OWNER from moving TODO directly to DONE", () => {
+    expect(
+      canChangeTaskStatus({
+        role: UserRole.OWNER,
+        currentStatus: TaskStatus.TODO,
+        nextStatus: TaskStatus.DONE,
+        isAssignee: false,
+        hasUnfinishedDependencies: false,
+        isConfirmedTask: false,
+      }),
+    ).toEqual({ ok: false, code: "INVALID_TASK_TRANSITION" });
+  });
+
+  it("prevents OWNER from moving IN_PROGRESS directly to DONE", () => {
+    expect(
+      canChangeTaskStatus({
+        role: UserRole.OWNER,
+        currentStatus: TaskStatus.IN_PROGRESS,
+        nextStatus: TaskStatus.DONE,
+        isAssignee: false,
+        hasUnfinishedDependencies: false,
+        isConfirmedTask: true,
+      }),
+    ).toEqual({ ok: false, code: "INVALID_TASK_TRANSITION" });
+  });
+
   it("prevents MEMBER from directly setting DONE", () => {
     expect(
       canChangeTaskStatus({

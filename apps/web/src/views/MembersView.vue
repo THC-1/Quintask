@@ -19,6 +19,7 @@ const auth = useAuthStore();
 const members = ref<Member[]>([]);
 const loading = ref(false);
 const saving = ref(false);
+const actionUserId = ref("");
 const error = ref("");
 
 const roleLabels: Record<UserRole, string> = {
@@ -77,6 +78,27 @@ async function createGeneratedMember() {
   }
 }
 
+async function updateMember(member: Member, input: { isActive?: boolean; password?: string }) {
+  if (actionUserId.value) {
+    return;
+  }
+
+  actionUserId.value = member.id;
+  error.value = "";
+
+  try {
+    await apiFetch<Member>(`/users/${member.id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    await loadMembers();
+  } catch (value) {
+    error.value = toChineseError(value, "成员更新失败，请稍后重试");
+  } finally {
+    actionUserId.value = "";
+  }
+}
+
 onMounted(() => {
   loadMembers();
 });
@@ -114,6 +136,7 @@ onMounted(() => {
                 <th>账号</th>
                 <th>角色</th>
                 <th>状态</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -122,9 +145,29 @@ onMounted(() => {
                 <td>{{ member.username }}</td>
                 <td>{{ roleLabels[member.role] }}</td>
                 <td>{{ member.isActive ? "启用" : "停用" }}</td>
+                <td>
+                  <div class="table-actions">
+                    <button
+                      type="button"
+                      class="ghost-button"
+                      :disabled="actionUserId === member.id"
+                      @click="updateMember(member, { isActive: !member.isActive })"
+                    >
+                      {{ member.isActive ? "停用" : "启用" }}
+                    </button>
+                    <button
+                      type="button"
+                      class="ghost-button"
+                      :disabled="actionUserId === member.id"
+                      @click="updateMember(member, { password: 'member123' })"
+                    >
+                      重置为 member123
+                    </button>
+                  </div>
+                </td>
               </tr>
               <tr v-if="members.length === 0">
-                <td colspan="4">暂无成员。</td>
+                <td colspan="5">暂无成员。</td>
               </tr>
             </tbody>
           </table>

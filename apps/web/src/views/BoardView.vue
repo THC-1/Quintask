@@ -1,11 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 
 import AppLayout from "../components/AppLayout.vue";
 import TaskCard from "../components/TaskCard.vue";
+import { useAuthStore } from "../stores/auth";
 import { useTasksStore, type TaskListItem, type TaskStatus } from "../stores/tasks";
 
+const auth = useAuthStore();
 const tasksStore = useTasksStore();
+const createLoading = ref(false);
+const createError = ref("");
+const createForm = reactive({
+  title: "",
+  description: "",
+  priority: "MEDIUM" as "LOW" | "MEDIUM" | "HIGH",
+  dueDate: "",
+});
+const canCreateTask = computed(() => Boolean(auth.user) && !auth.isTeacher);
 
 const columns: Array<{ status: TaskStatus; title: string }> = [
   { status: "TODO", title: "待处理" },
@@ -24,6 +35,38 @@ const tasksByStatus = computed(() =>
   ),
 );
 
+async function submitTask() {
+  if (createLoading.value) {
+    return;
+  }
+
+  createError.value = "";
+
+  if (!createForm.title.trim()) {
+    createError.value = "请输入任务标题";
+    return;
+  }
+
+  createLoading.value = true;
+
+  try {
+    await tasksStore.createTask({
+      title: createForm.title.trim(),
+      description: createForm.description.trim(),
+      priority: createForm.priority,
+      dueDate: createForm.dueDate ? new Date(`${createForm.dueDate}T00:00:00`).toISOString() : null,
+    });
+    createForm.title = "";
+    createForm.description = "";
+    createForm.priority = "MEDIUM";
+    createForm.dueDate = "";
+  } catch {
+    createError.value = tasksStore.error || "任务创建失败，请稍后重试";
+  } finally {
+    createLoading.value = false;
+  }
+}
+
 onMounted(() => {
   tasksStore.loadTasks().catch(() => undefined);
 });
@@ -39,6 +82,33 @@ onMounted(() => {
         </div>
         <span class="page-count">{{ tasksStore.tasks.length }} 个任务</span>
       </div>
+
+      <form v-if="canCreateTask" class="inline-create-form board-create-form" @submit.prevent="submitTask">
+        <label>
+          标题
+          <input v-model="createForm.title" type="text" placeholder="新增任务或建议" />
+        </label>
+        <label>
+          描述
+          <input v-model="createForm.description" type="text" placeholder="补充目标、背景或交付物" />
+        </label>
+        <label v-if="auth.isOwner">
+          优先级
+          <select v-model="createForm.priority">
+            <option value="LOW">低</option>
+            <option value="MEDIUM">中</option>
+            <option value="HIGH">高</option>
+          </select>
+        </label>
+        <label v-if="auth.isOwner">
+          截止日期
+          <input v-model="createForm.dueDate" type="date" />
+        </label>
+        <button type="submit" class="primary-button" :disabled="createLoading">
+          {{ createLoading ? "提交中..." : auth.isOwner ? "创建任务" : "提交建议" }}
+        </button>
+        <p v-if="createError" class="form-error" role="alert">{{ createError }}</p>
+      </form>
 
       <p v-if="tasksStore.error" class="form-error" role="alert">{{ tasksStore.error }}</p>
       <p v-else-if="tasksStore.loading" class="state-text">正在加载任务...</p>

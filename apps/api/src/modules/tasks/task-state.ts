@@ -29,6 +29,14 @@ export function canChangeTaskStatus(input: TaskStateChangeInput): TaskStateChang
   }
 
   if (input.role === UserRole.OWNER) {
+    if (
+      input.nextStatus === TaskStatus.DONE &&
+      input.currentStatus !== TaskStatus.IN_REVIEW &&
+      input.currentStatus !== TaskStatus.DONE
+    ) {
+      return { ok: false, code: "INVALID_TASK_TRANSITION" };
+    }
+
     return { ok: true };
   }
 

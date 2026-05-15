@@ -5,20 +5,40 @@ import { RouterLink, useRoute } from "vue-router";
 import AppLayout from "../components/AppLayout.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import { useAuthStore } from "../stores/auth";
-import { useTasksStore, type TaskStatus } from "../stores/tasks";
+import { useTasksStore, type CommentType, type TaskStatus } from "../stores/tasks";
 
 const route = useRoute();
 const auth = useAuthStore();
 const tasksStore = useTasksStore();
 const actionLoading = ref(false);
 const subtaskLoadingId = ref("");
+const commentLoading = ref(false);
+const subtaskCreateLoading = ref(false);
+const commentError = ref("");
+const subtaskCreateError = ref("");
+const commentContent = ref("");
+const commentType = ref<CommentType>("COMMENT");
+const subtaskTitle = ref("");
 
 const taskId = computed(() => String(route.params.id));
 const task = computed(() => tasksStore.currentTask);
 const isAssignee = computed(() => task.value?.assignee?.id === auth.user?.id);
 const canMoveAssignedTask = computed(() => auth.isOwner || isAssignee.value);
 const canEditSubtasks = computed(() => !auth.isTeacher && (auth.isOwner || isAssignee.value));
+const canCreateComment = computed(() => Boolean(auth.user) && !auth.isTeacher);
 const isOwnerReview = computed(() => auth.isOwner && task.value?.status === "IN_REVIEW");
+const commentTypeOptions = computed<Array<{ type: CommentType; label: string }>>(() => {
+  const options: Array<{ type: CommentType; label: string }> = [
+    { type: "COMMENT", label: "评论" },
+    { type: "PROGRESS", label: "进展" },
+  ];
+
+  if (auth.isOwner) {
+    options.push({ type: "REVIEW", label: "验收" });
+  }
+
+  return options;
+});
 
 const availableActions = computed<Array<{ status: TaskStatus; label: string; tone?: "secondary" }>>(() => {
   if (!task.value || auth.isTeacher) {
@@ -101,6 +121,58 @@ async function updateSubtask(id: string, event: Event) {
     target.checked = !target.checked;
   } finally {
     subtaskLoadingId.value = "";
+  }
+}
+
+async function submitComment() {
+  if (!task.value || commentLoading.value) {
+    return;
+  }
+
+  commentError.value = "";
+
+  if (!commentContent.value.trim()) {
+    commentError.value = "请输入内容";
+    return;
+  }
+
+  commentLoading.value = true;
+
+  try {
+    await tasksStore.createComment(task.value.id, {
+      content: commentContent.value.trim(),
+      type: commentType.value,
+    });
+    commentContent.value = "";
+    commentType.value = "COMMENT";
+  } catch {
+    commentError.value = tasksStore.error || "提交失败，请稍后重试";
+  } finally {
+    commentLoading.value = false;
+  }
+}
+
+async function submitSubtask() {
+  if (!task.value || subtaskCreateLoading.value) {
+    return;
+  }
+
+  subtaskCreateError.value = "";
+
+  if (!subtaskTitle.value.trim()) {
+    subtaskCreateError.value = "请输入子任务标题";
+    return;
+  }
+
+  subtaskCreateLoading.value = true;
+
+  try {
+    await tasksStore.createSubtask(task.value.id, subtaskTitle.value.trim());
+    subtaskTitle.value = "";
+  } catch {
+    subtaskCreateError.value = tasksStore.error || "创建子任务失败，请稍后重试";
+  } finally {
+    subtaskCreateLoading.value = false;
   }
 }
 
@@ -191,6 +263,13 @@ watch(taskId, () => {
 
         <section class="detail-panel">
           <h2>子任务</h2>
+          <form v-if="canEditSubtasks" class="inline-panel-form" @submit.prevent="submitSubtask">
+            <input v-model="subtaskTitle" type="text" placeholder="新增子任务" />
+            <button type="submit" class="primary-button" :disabled="subtaskCreateLoading">
+              {{ subtaskCreateLoading ? "提交中..." : "添加" }}
+            </button>
+            <p v-if="subtaskCreateError" class="form-error" role="alert">{{ subtaskCreateError }}</p>
+          </form>
           <div v-if="task.subtasks.length > 0" class="subtask-list">
             <label v-for="subtask in task.subtasks" :key="subtask.id" class="subtask-item">
               <input
@@ -222,6 +301,20 @@ watch(taskId, () => {
 
         <section class="detail-panel">
           <h2>评论</h2>
+          <form v-if="canCreateComment" class="comment-form" @submit.prevent="submitComment">
+            <div class="comment-form-row">
+              <select v-model="commentType">
+                <option v-for="option in commentTypeOptions" :key="option.type" :value="option.type">
+                  {{ option.label }}
+                </option>
+              </select>
+              <input v-model="commentContent" type="text" placeholder="记录评论或进展" />
+              <button type="submit" class="primary-button" :disabled="commentLoading">
+                {{ commentLoading ? "提交中..." : "发布" }}
+              </button>
+            </div>
+            <p v-if="commentError" class="form-error" role="alert">{{ commentError }}</p>
+          </form>
           <div v-if="task.comments.length > 0" class="comment-list">
             <article v-for="comment in task.comments" :key="comment.id" class="comment-item">
               <header>

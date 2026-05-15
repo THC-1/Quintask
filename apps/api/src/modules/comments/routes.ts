@@ -5,6 +5,7 @@ import { prisma } from "../../db.js";
 import { errors } from "../../lib/errors.js";
 import { created, readJson } from "../../lib/http.js";
 import { authMiddleware } from "../../middleware/auth.js";
+import { canCreateCommentType } from "./permissions.js";
 
 export const commentRoutes = new Hono();
 
@@ -21,6 +22,10 @@ commentRoutes.post("/tasks/:taskId/comments", async (c) => {
 
   if (!parsed.success) {
     throw errors.validation(parsed.error.issues[0]?.message ?? "请求参数不正确");
+  }
+
+  if (!canCreateCommentType(user.role, parsed.data.type)) {
+    throw errors.forbidden();
   }
 
   const task = await prisma.task.findUnique({

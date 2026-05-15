@@ -4,6 +4,7 @@ import { ApiError, apiFetch } from "../api/client";
 
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "IN_REVIEW" | "DONE";
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+export type CommentType = "COMMENT" | "PROGRESS" | "REVIEW";
 
 type SimpleUser = {
   id: string;
@@ -137,6 +138,53 @@ export const useTasksStore = defineStore("tasks", {
         }
       } catch (error) {
         this.error = toChineseError(error, "任务状态更新失败，请稍后重试");
+        throw error;
+      }
+    },
+    async createTask(input: {
+      title: string;
+      description: string;
+      priority?: TaskPriority;
+      dueDate?: string | null;
+    }) {
+      this.error = "";
+
+      try {
+        await apiFetch<TaskDetail>("/tasks", {
+          method: "POST",
+          body: JSON.stringify(input),
+        });
+        await this.loadTasks();
+      } catch (error) {
+        this.error = toChineseError(error, "任务创建失败，请稍后重试");
+        throw error;
+      }
+    },
+    async createComment(taskId: string, input: { content: string; type: CommentType }) {
+      this.error = "";
+
+      try {
+        await apiFetch(`/tasks/${taskId}/comments`, {
+          method: "POST",
+          body: JSON.stringify(input),
+        });
+        await this.loadTask(taskId);
+      } catch (error) {
+        this.error = toChineseError(error, "评论提交失败，请稍后重试");
+        throw error;
+      }
+    },
+    async createSubtask(taskId: string, title: string) {
+      this.error = "";
+
+      try {
+        await apiFetch(`/tasks/${taskId}/subtasks`, {
+          method: "POST",
+          body: JSON.stringify({ title }),
+        });
+        await this.loadTask(taskId);
+      } catch (error) {
+        this.error = toChineseError(error, "子任务创建失败，请稍后重试");
         throw error;
       }
     },

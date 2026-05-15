@@ -11,6 +11,21 @@ export const subtaskRoutes = new Hono();
 
 subtaskRoutes.use("*", authMiddleware);
 
+async function validateSubtaskAssignee(assigneeId: string | null | undefined) {
+  if (assigneeId === undefined || assigneeId === null) {
+    return;
+  }
+
+  const assignee = await prisma.user.findFirst({
+    where: { id: assigneeId, isActive: true },
+    select: { id: true },
+  });
+
+  if (!assignee) {
+    throw errors.validation("子任务执行人不存在。");
+  }
+}
+
 subtaskRoutes.post("/tasks/:taskId/subtasks", async (c) => {
   const user = c.get("user");
 
@@ -36,6 +51,8 @@ subtaskRoutes.post("/tasks/:taskId/subtasks", async (c) => {
   if (!canWriteSubtask(user.role, user.id, task.assigneeId)) {
     throw errors.forbidden();
   }
+
+  await validateSubtaskAssignee(parsed.data.assigneeId);
 
   return created(
     c,
@@ -88,6 +105,8 @@ subtaskRoutes.patch("/subtasks/:id", async (c) => {
   ) {
     throw errors.validation("成员只能更新子任务完成状态。");
   }
+
+  await validateSubtaskAssignee(parsed.data.assigneeId);
 
   return ok(
     c,
