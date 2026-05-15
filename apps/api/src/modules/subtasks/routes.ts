@@ -5,6 +5,7 @@ import { prisma } from "../../db.js";
 import { errors } from "../../lib/errors.js";
 import { created, ok, readJson } from "../../lib/http.js";
 import { authMiddleware } from "../../middleware/auth.js";
+import { canWriteSubtask } from "./permissions.js";
 
 export const subtaskRoutes = new Hono();
 
@@ -25,11 +26,15 @@ subtaskRoutes.post("/tasks/:taskId/subtasks", async (c) => {
 
   const task = await prisma.task.findUnique({
     where: { id: c.req.param("taskId") },
-    select: { id: true },
+    select: { id: true, assigneeId: true },
   });
 
   if (!task) {
     throw errors.notFound("任务不存在。");
+  }
+
+  if (!canWriteSubtask(user.role, user.id, task.assigneeId)) {
+    throw errors.forbidden();
   }
 
   return created(
@@ -60,11 +65,18 @@ subtaskRoutes.patch("/subtasks/:id", async (c) => {
 
   const subtask = await prisma.subtask.findUnique({
     where: { id: c.req.param("id") },
-    select: { id: true },
+    select: {
+      id: true,
+      task: { select: { assigneeId: true } },
+    },
   });
 
   if (!subtask) {
     throw errors.notFound("子任务不存在。");
+  }
+
+  if (!canWriteSubtask(user.role, user.id, subtask.task.assigneeId)) {
+    throw errors.forbidden();
   }
 
   return ok(

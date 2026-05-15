@@ -10,6 +10,11 @@ import {
 
 import { prisma } from "../../db.js";
 import { errors } from "../../lib/errors.js";
+import {
+  getUnsupportedTaskUpdateFields,
+  normalizeCreateTaskRelations,
+  normalizeCreateTaskScalars,
+} from "./input-boundaries.js";
 import { canChangeTaskStatus } from "./task-state.js";
 
 const safeUserSelect = {
@@ -85,23 +90,34 @@ export async function createTask(input: unknown, currentUser: CurrentUser) {
     throw errors.notFound("项目不存在。");
   }
 
-  const isOwner = currentUser.role === UserRole.OWNER;
+  const scalars = normalizeCreateTaskScalars({
+    role: currentUser.role,
+    priority: parsed.data.priority,
+    assigneeId: parsed.data.assigneeId,
+    milestoneId: parsed.data.milestoneId,
+    dueDate: parsed.data.dueDate,
+  });
+  const relations = normalizeCreateTaskRelations({
+    role: currentUser.role,
+    tagIds: parsed.data.tagIds,
+    dependencyIds: parsed.data.dependencyIds,
+  });
 
   return prisma.task.create({
     data: {
       projectId: project.id,
       title: parsed.data.title,
       description: parsed.data.description,
-      priority: parsed.data.priority,
+      priority: scalars.priority,
       creatorId: currentUser.id,
-      assigneeId: isOwner ? (parsed.data.assigneeId ?? null) : null,
-      milestoneId: isOwner ? (parsed.data.milestoneId ?? null) : null,
-      dueDate: parseDateInput(parsed.data.dueDate),
+      assigneeId: scalars.assigneeId,
+      milestoneId: scalars.milestoneId,
+      dueDate: parseDateInput(scalars.dueDate),
       tags: {
-        create: parsed.data.tagIds.map((tagId) => ({ tagId })),
+        create: relations.tagIds.map((tagId) => ({ tagId })),
       },
       dependencies: {
-        create: parsed.data.dependencyIds.map((dependsOnTaskId) => ({ dependsOnTaskId })),
+        create: relations.dependencyIds.map((dependsOnTaskId) => ({ dependsOnTaskId })),
       },
     },
     include: {
@@ -116,6 +132,10 @@ export async function createTask(input: unknown, currentUser: CurrentUser) {
 export async function updateTask(id: string, input: unknown, currentUser: CurrentUser) {
   if (currentUser.role !== UserRole.OWNER) {
     throw errors.forbidden();
+  }
+
+  if (typeof input === "object" && input !== null && getUnsupportedTaskUpdateFields(input).length > 0) {
+    throw errors.validation("请使用对应接口修改任务状态、标签或依赖关系。");
   }
 
   const parsed = updateTaskSchema.safeParse(input);
