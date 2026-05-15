@@ -5,7 +5,7 @@ import { prisma } from "../../db.js";
 import { errors } from "../../lib/errors.js";
 import { created, ok, readJson } from "../../lib/http.js";
 import { authMiddleware } from "../../middleware/auth.js";
-import { canWriteSubtask } from "./permissions.js";
+import { canWriteSubtask, getUnsupportedMemberSubtaskUpdateFields } from "./permissions.js";
 
 export const subtaskRoutes = new Hono();
 
@@ -57,7 +57,8 @@ subtaskRoutes.patch("/subtasks/:id", async (c) => {
     throw errors.forbidden();
   }
 
-  const parsed = updateSubtaskSchema.safeParse(await readJson(c));
+  const input = await readJson(c);
+  const parsed = updateSubtaskSchema.safeParse(input);
 
   if (!parsed.success) {
     throw errors.validation(parsed.error.issues[0]?.message ?? "请求参数不正确");
@@ -77,6 +78,15 @@ subtaskRoutes.patch("/subtasks/:id", async (c) => {
 
   if (!canWriteSubtask(user.role, user.id, subtask.task.assigneeId)) {
     throw errors.forbidden();
+  }
+
+  if (
+    user.role === UserRole.MEMBER &&
+    typeof input === "object" &&
+    input !== null &&
+    getUnsupportedMemberSubtaskUpdateFields(input).length > 0
+  ) {
+    throw errors.validation("成员只能更新子任务完成状态。");
   }
 
   return ok(

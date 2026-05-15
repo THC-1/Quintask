@@ -1,6 +1,6 @@
 import { UserRole } from "@quintask/shared";
 
-import { canWriteSubtask } from "./permissions.js";
+import { canWriteSubtask, getUnsupportedMemberSubtaskUpdateFields } from "./permissions.js";
 
 describe("subtask permissions", () => {
   it("allows owners to write any subtask", () => {
@@ -16,5 +16,18 @@ describe("subtask permissions", () => {
 
   it("prevents teachers from writing subtasks", () => {
     expect(canWriteSubtask(UserRole.TEACHER, "teacher-1", "teacher-1")).toBe(false);
+  });
+
+  it("detects subtask fields members are not allowed to update", () => {
+    expect(
+      getUnsupportedMemberSubtaskUpdateFields({
+        isDone: true,
+        title: "New title",
+        assigneeId: "member-2",
+        sortOrder: 2,
+      }),
+    ).toEqual(["title", "assigneeId", "sortOrder"]);
+
+    expect(getUnsupportedMemberSubtaskUpdateFields({ isDone: false })).toEqual([]);
   });
 });

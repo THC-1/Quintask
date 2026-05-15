@@ -36,6 +36,57 @@ function parseDateInput(value: string | null | undefined) {
   return value === null ? null : new Date(value);
 }
 
+async function validateTaskRelations(input: {
+  assigneeId?: string | null;
+  milestoneId?: string | null;
+  tagIds?: string[];
+  dependencyIds?: string[];
+}) {
+  if (input.assigneeId !== undefined && input.assigneeId !== null) {
+    const assignee = await prisma.user.findFirst({
+      where: { id: input.assigneeId, isActive: true },
+      select: { id: true },
+    });
+
+    if (!assignee) {
+      throw errors.validation("执行人不存在。");
+    }
+  }
+
+  if (input.milestoneId !== undefined && input.milestoneId !== null) {
+    const milestone = await prisma.milestone.findUnique({
+      where: { id: input.milestoneId },
+      select: { id: true },
+    });
+
+    if (!milestone) {
+      throw errors.validation("里程碑不存在。");
+    }
+  }
+
+  if (input.tagIds?.length) {
+    const tags = await prisma.tag.findMany({
+      where: { id: { in: input.tagIds } },
+      select: { id: true },
+    });
+
+    if (tags.length !== input.tagIds.length) {
+      throw errors.validation("标签不存在。");
+    }
+  }
+
+  if (input.dependencyIds?.length) {
+    const dependencies = await prisma.task.findMany({
+      where: { id: { in: input.dependencyIds } },
+      select: { id: true },
+    });
+
+    if (dependencies.length !== input.dependencyIds.length) {
+      throw errors.validation("依赖任务不存在。");
+    }
+  }
+}
+
 export function listTasks() {
   return prisma.task.findMany({
     orderBy: { createdAt: "desc" },
@@ -103,6 +154,15 @@ export async function createTask(input: unknown, currentUser: CurrentUser) {
     dependencyIds: parsed.data.dependencyIds,
   });
 
+  if (currentUser.role === UserRole.OWNER) {
+    await validateTaskRelations({
+      assigneeId: scalars.assigneeId,
+      milestoneId: scalars.milestoneId,
+      tagIds: relations.tagIds,
+      dependencyIds: relations.dependencyIds,
+    });
+  }
+
   return prisma.task.create({
     data: {
       projectId: project.id,
@@ -152,6 +212,11 @@ export async function updateTask(id: string, input: unknown, currentUser: Curren
   if (!existingTask) {
     throw errors.notFound("任务不存在。");
   }
+
+  await validateTaskRelations({
+    assigneeId: parsed.data.assigneeId,
+    milestoneId: parsed.data.milestoneId,
+  });
 
   const data: Prisma.TaskUncheckedUpdateInput = {};
 
