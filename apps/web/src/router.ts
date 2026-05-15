@@ -17,7 +17,7 @@ const routes: RouteRecordRaw[] = [
   { path: "/tasks/:id", name: "task-detail", component: TaskDetailView },
   { path: "/milestones", name: "milestones", component: MilestonesView },
   { path: "/workload", name: "workload", component: WorkloadView },
-  { path: "/members", name: "members", component: MembersView }
+  { path: "/members", name: "members", component: MembersView, meta: { requiresOwner: true } }
 ];
 
 const router = createRouter({
@@ -47,6 +47,10 @@ router.beforeEach(async (to) => {
 
   if (!to.meta.public && !auth.user) {
     return { name: "login", query: { redirect: to.fullPath } };
+  }
+
+  if (to.meta.requiresOwner && !auth.isOwner) {
+    return { name: "dashboard" };
   }
 
   return true;
