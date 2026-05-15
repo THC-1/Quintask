@@ -7,9 +7,9 @@
     "dev": "npm run dev -w @quintask/api",
     "dev:api": "npm run dev -w @quintask/api",
     "dev:web": "npm run dev -w @quintask/web",
-    "build": "npm run build -ws",
-    "test": "npm run test -ws",
-    "lint": "npm run typecheck -ws",
+    "build": "npm run build -w @quintask/shared && npm run build -w @quintask/api && npm run build -w @quintask/web",
+    "test": "npm run test -w @quintask/shared && npm run test -w @quintask/api && npm run test -w @quintask/web",
+    "lint": "npm run typecheck -w @quintask/shared && npm run typecheck -w @quintask/api && npm run typecheck -w @quintask/web",
     "db:generate": "npm run db:generate -w @quintask/api",
     "db:migrate": "npm run db:migrate -w @quintask/api",
     "db:seed": "npm run db:seed -w @quintask/api"
