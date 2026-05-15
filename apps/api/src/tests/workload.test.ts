@@ -21,7 +21,7 @@ describe("summarizeMemberWorkload", () => {
         assigneeId: "u2",
         status: TaskStatus.DONE,
         priority: TaskPriority.LOW,
-        dependencies: [],
+        dependencies: [{ dependsOnTask: { status: TaskStatus.TODO } }],
       },
       {
         assigneeId: null,

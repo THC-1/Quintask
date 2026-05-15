@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { createMilestoneSchema } from "@quintask/shared";
 import { Hono } from "hono";
 
@@ -36,6 +36,14 @@ function milestoneProgress(tasks: Array<{ status: string }>) {
     doneTasks,
     progress: totalTasks === 0 ? 0 : Math.round((doneTasks / totalTasks) * 100),
   };
+}
+
+function mapMilestoneWriteError(error: unknown): never {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    throw errors.notFound("里程碑不存在。");
+  }
+
+  throw error;
 }
 
 milestoneRoutes.use("*", authMiddleware);
@@ -126,11 +134,15 @@ milestoneRoutes.patch("/:id", async (c) => {
     data.sortOrder = parsed.data.sortOrder;
   }
 
-  return ok(
-    c,
-    await prisma.milestone.update({
-      where: { id: c.req.param("id") },
-      data,
-    }),
-  );
+  try {
+    return ok(
+      c,
+      await prisma.milestone.update({
+        where: { id: c.req.param("id") },
+        data,
+      }),
+    );
+  } catch (error) {
+    mapMilestoneWriteError(error);
+  }
 });

@@ -30,8 +30,14 @@ function requireOwner(role: UserRole) {
 }
 
 function mapUserWriteError(error: unknown): never {
-  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-    throw errors.validation("账号已存在。");
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      throw errors.validation("账号已存在。");
+    }
+
+    if (error.code === "P2025") {
+      throw errors.notFound("用户不存在。");
+    }
   }
 
   throw error;

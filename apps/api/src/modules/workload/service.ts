@@ -67,7 +67,11 @@ export function summarizeMemberWorkload(tasks: WorkloadTask[]) {
       summary.low += 1;
     }
 
-    if (task.dependencies?.some((dependency) => dependency.dependsOnTask.status !== TaskStatus.DONE)) {
+    const hasUnfinishedDependencies = task.dependencies?.some(
+      (dependency) => dependency.dependsOnTask.status !== TaskStatus.DONE,
+    );
+
+    if (task.status !== TaskStatus.DONE && hasUnfinishedDependencies) {
       summary.blocked += 1;
     }
 
@@ -108,7 +112,13 @@ export async function getWorkload() {
       },
       dependencies: {
         include: {
-          dependsOnTask: true,
+          dependsOnTask: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+            },
+          },
         },
       },
     },
