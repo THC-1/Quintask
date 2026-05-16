@@ -1,32 +1,7 @@
 <script setup lang="ts">
 import StatusBadge from "./StatusBadge.vue";
-import type { TaskPriority, TaskStatus } from "../stores/tasks";
-
-type WorkloadTask = {
-  id: string;
-  title: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-};
-
-type WorkloadItem = {
-  user: {
-    id: string;
-    name: string;
-  };
-  summary: {
-    total: number;
-    todo: number;
-    inProgress: number;
-    inReview: number;
-    done: number;
-    blocked: number;
-    high: number;
-    medium: number;
-    low: number;
-  };
-  tasks: WorkloadTask[];
-};
+import type { TaskPriority } from "../stores/tasks";
+import type { WorkloadItem } from "../types/workload";
 
 const props = defineProps<{
   item: WorkloadItem;

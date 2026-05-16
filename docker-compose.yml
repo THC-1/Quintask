@@ -1,0 +1,46 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-quintask_root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-quintask}
+      MYSQL_USER: ${MYSQL_USER:-quintask}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-quintask_password}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: mysql://${MYSQL_USER:-quintask}:${MYSQL_PASSWORD:-quintask_password}@mysql:3306/${MYSQL_DATABASE:-quintask}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+    expose:
+      - "3000"
+    command: sh -c "npx prisma generate --schema apps/api/prisma/schema.prisma && npx prisma migrate deploy --schema apps/api/prisma/schema.prisma && node apps/api/dist/src/index.js"
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-80}:80"
+
+volumes:
+  mysql-data:

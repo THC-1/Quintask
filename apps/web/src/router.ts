@@ -6,6 +6,7 @@ import LoginView from "./views/LoginView.vue";
 import MembersView from "./views/MembersView.vue";
 import MilestonesView from "./views/MilestonesView.vue";
 import TaskDetailView from "./views/TaskDetailView.vue";
+import TasksView from "./views/TasksView.vue";
 import WorkloadView from "./views/WorkloadView.vue";
 import { useAuthStore } from "./stores/auth";
 
@@ -14,6 +15,7 @@ const routes: RouteRecordRaw[] = [
   { path: "/", redirect: "/dashboard" },
   { path: "/dashboard", name: "dashboard", component: DashboardView },
   { path: "/board", name: "board", component: BoardView },
+  { path: "/tasks", name: "tasks", component: TasksView },
   { path: "/tasks/:id", name: "task-detail", component: TaskDetailView },
   { path: "/milestones", name: "milestones", component: MilestonesView },
   { path: "/workload", name: "workload", component: WorkloadView },

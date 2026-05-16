@@ -12,7 +12,7 @@ const navigation = computed(() => {
     { to: "/dashboard", label: "首页" },
     { to: "/board", label: "任务看板" },
     { to: "/milestones", label: "里程碑" },
-    { to: "/workload", label: "团队工作量" }
+    { to: "/workload", label: "任务总览" }
   ];
 
   if (auth.isOwner) {
