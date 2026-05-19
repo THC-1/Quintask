@@ -37,8 +37,8 @@ export function normalizeCreateTaskScalars(input: TaskCreateScalarInput) {
 
   return {
     priority: input.priority,
-    assigneeId: input.assigneeId ?? null,
-    milestoneId: input.milestoneId ?? null,
+    assigneeId: input.assigneeId || null,
+    milestoneId: input.milestoneId || null,
     dueDate: input.dueDate ?? null,
   };
 }

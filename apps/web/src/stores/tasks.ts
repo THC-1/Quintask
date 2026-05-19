@@ -156,8 +156,8 @@ export const useTasksStore = defineStore("tasks", {
       title: string;
       description: string;
       priority: TaskPriority;
-      assigneeId: string;
-      milestoneId: string;
+      assigneeId: string | null;
+      milestoneId: string | null;
       dueDate: string | null;
       tagIds: string[];
       dependencyIds: string[];
