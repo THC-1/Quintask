@@ -10,8 +10,9 @@ import {
   categoryFromQuery,
   filterTasksByCategory,
   filterTasksByWeek,
+  getCurrentWeekIndex,
+  getWeekWindows,
   taskCategoryOptions,
-  weekWindows,
   type TaskCategory,
 } from "../utils/taskSchedule";
 
@@ -19,13 +20,14 @@ const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const tasksStore = useTasksStore();
-const selectedWeekIndex = ref(1);
+const weekWindows = computed(() => getWeekWindows());
+const selectedWeekIndex = ref(getCurrentWeekIndex());
 const selectedCategory = ref<TaskCategory>("ALL");
 const deletingTaskId = ref("");
 
 function weekIndexFromQuery(value: unknown) {
   const index = Number(value);
-  return Number.isInteger(index) && index >= 0 && index < weekWindows.length ? index : 1;
+  return Number.isInteger(index) && index >= 0 && index < weekWindows.value.length ? index : getCurrentWeekIndex();
 }
 
 watch(
@@ -44,7 +46,7 @@ watch(
   { immediate: true },
 );
 
-const selectedWeek = computed(() => weekWindows[selectedWeekIndex.value]);
+const selectedWeek = computed(() => weekWindows.value[selectedWeekIndex.value]);
 const weekTasks = computed(() => filterTasksByWeek(tasksStore.tasks, selectedWeek.value));
 const visibleTasks = computed(() => filterTasksByCategory(weekTasks.value, selectedCategory.value));
 const categoryLabel = computed(
@@ -70,7 +72,7 @@ async function deleteTask(task: { id: string; title: string }) {
     return;
   }
 
-  const confirmed = window.confirm(`确定要删除任务“${task.title}”吗？此操作不可恢复。`);
+  const confirmed = window.confirm(`确定要删除任务"${task.title}"吗？此操作不可恢复。`);
 
   if (!confirmed) {
     return;

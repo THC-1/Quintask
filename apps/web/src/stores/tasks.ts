@@ -155,17 +155,22 @@ export const useTasksStore = defineStore("tasks", {
     async createTask(input: {
       title: string;
       description: string;
-      priority?: TaskPriority;
-      dueDate?: string | null;
+      priority: TaskPriority;
+      assigneeId: string | null;
+      milestoneId: string | null;
+      dueDate: string | null;
+      tagIds: string[];
+      dependencyIds: string[];
     }) {
       this.error = "";
 
       try {
-        await apiFetch<TaskDetail>("/tasks", {
+        const task = await apiFetch<TaskDetail>("/tasks", {
           method: "POST",
           body: JSON.stringify(input),
         });
         await this.loadTasks();
+        return task;
       } catch (error) {
         this.error = toChineseError(error, "任务创建失败，请稍后重试");
         throw error;
