@@ -4,7 +4,7 @@ import { RouterLink, useRouter } from "vue-router";
 
 import AppLayout from "../components/AppLayout.vue";
 import { apiFetch } from "../api/client";
-import { useAuthStore } from "../stores/auth";
+
 import { useTasksStore, type TaskPriority } from "../stores/tasks";
 
 type AssignableUser = {
@@ -26,7 +26,7 @@ type TagOption = {
 };
 
 const router = useRouter();
-const auth = useAuthStore();
+
 const tasksStore = useTasksStore();
 
 const createLoading = ref(false);
