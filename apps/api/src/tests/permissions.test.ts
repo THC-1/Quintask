@@ -1,6 +1,6 @@
 import { UserRole } from "@quintask/shared";
 
-import { canWriteComment, canWriteGlobalConfig, canWriteTask } from "../modules/tasks/permissions.js";
+import { canDeleteTask, canWriteComment, canWriteGlobalConfig, canWriteTask } from "../modules/tasks/permissions.js";
 
 describe("task permissions", () => {
   it("prevents TEACHER from writing tasks or comments", () => {
@@ -13,6 +13,12 @@ describe("task permissions", () => {
     expect(canWriteTask(UserRole.OWNER, false)).toBe(true);
     expect(canWriteTask(UserRole.OWNER, true)).toBe(true);
     expect(canWriteGlobalConfig(UserRole.OWNER)).toBe(true);
+  });
+
+  it("allows only OWNER to delete tasks", () => {
+    expect(canDeleteTask(UserRole.OWNER)).toBe(true);
+    expect(canDeleteTask(UserRole.MEMBER)).toBe(false);
+    expect(canDeleteTask(UserRole.TEACHER)).toBe(false);
   });
 
   it("allows MEMBER to create suggestions and comments but not write global config", () => {

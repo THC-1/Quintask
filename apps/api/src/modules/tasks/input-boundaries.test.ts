@@ -2,8 +2,10 @@ import { TaskPriority, UserRole } from "@quintask/shared";
 
 import {
   getUnsupportedTaskUpdateFields,
+  hasSelfDependency,
   normalizeCreateTaskRelations,
   normalizeCreateTaskScalars,
+  normalizeUpdateTaskRelations,
 } from "./input-boundaries.js";
 
 describe("task input boundaries", () => {
@@ -15,7 +17,30 @@ describe("task input boundaries", () => {
         tagIds: ["tag-1"],
         dependencyIds: ["task-1"],
       }),
-    ).toEqual(["status", "tagIds", "dependencyIds"]);
+    ).toEqual(["status"]);
+  });
+
+  it("deduplicates provided relation ids on update", () => {
+    expect(
+      normalizeUpdateTaskRelations({
+        tagIds: ["tag-1", "tag-1", "tag-2"],
+        dependencyIds: ["task-1", "task-1", "task-2"],
+      }),
+    ).toEqual({
+      tagIds: ["tag-1", "tag-2"],
+      dependencyIds: ["task-1", "task-2"],
+    });
+
+    expect(normalizeUpdateTaskRelations({})).toEqual({
+      tagIds: undefined,
+      dependencyIds: undefined,
+    });
+  });
+
+  it("detects self-dependency on task update", () => {
+    expect(hasSelfDependency("task-1", ["task-2", "task-1"])).toBe(true);
+    expect(hasSelfDependency("task-1", ["task-2"])).toBe(false);
+    expect(hasSelfDependency("task-1", undefined)).toBe(false);
   });
 
   it("deduplicates owner task relation ids on create", () => {

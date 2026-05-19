@@ -2,7 +2,7 @@ import { Hono } from "hono";
 
 import { created, ok, readJson } from "../../lib/http.js";
 import { authMiddleware } from "../../middleware/auth.js";
-import { changeTaskStatus, createTask, getTask, listTasks, updateTask } from "./service.js";
+import { changeTaskStatus, createTask, deleteTask, getTask, listTasks, updateTask } from "./service.js";
 
 export const taskRoutes = new Hono();
 
@@ -22,6 +22,10 @@ taskRoutes.get("/:id", async (c) => {
 
 taskRoutes.patch("/:id", async (c) => {
   return ok(c, await updateTask(c.req.param("id"), await readJson(c), c.get("user")));
+});
+
+taskRoutes.delete("/:id", async (c) => {
+  return ok(c, await deleteTask(c.req.param("id"), c.get("user")));
 });
 
 taskRoutes.post("/:id/status", async (c) => {

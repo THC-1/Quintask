@@ -64,6 +64,17 @@ export type TaskDetail = TaskListItem & {
   }>;
 };
 
+export type UpdateTaskInput = {
+  title?: string;
+  description?: string;
+  priority?: TaskPriority;
+  assigneeId?: string | null;
+  milestoneId?: string | null;
+  dueDate?: string | null;
+  tagIds?: string[];
+  dependencyIds?: string[];
+};
+
 type TasksState = {
   tasks: TaskListItem[];
   currentTask: TaskDetail | null;
@@ -157,6 +168,43 @@ export const useTasksStore = defineStore("tasks", {
         await this.loadTasks();
       } catch (error) {
         this.error = toChineseError(error, "任务创建失败，请稍后重试");
+        throw error;
+      }
+    },
+    async updateTask(id: string, input: UpdateTaskInput) {
+      this.error = "";
+
+      try {
+        await apiFetch<TaskDetail>(`/tasks/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(input),
+        });
+
+        if (this.currentTask?.id === id) {
+          await this.loadTask(id);
+        } else {
+          await this.loadTasks();
+        }
+      } catch (error) {
+        this.error = toChineseError(error, "任务更新失败，请稍后重试");
+        throw error;
+      }
+    },
+    async deleteTask(id: string) {
+      this.error = "";
+
+      try {
+        await apiFetch<{ id: string }>(`/tasks/${id}`, {
+          method: "DELETE",
+        });
+
+        if (this.currentTask?.id === id) {
+          this.currentTask = null;
+        }
+
+        await this.loadTasks();
+      } catch (error) {
+        this.error = toChineseError(error, "任务删除失败，请稍后重试");
         throw error;
       }
     },
