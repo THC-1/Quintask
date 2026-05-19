@@ -7,6 +7,12 @@ import type { TaskListItem, TaskPriority } from "../stores/tasks";
 
 const props = defineProps<{
   task: TaskListItem;
+  canDelete?: boolean;
+  deleting?: boolean;
+}>();
+
+const emit = defineEmits<{
+  delete: [task: TaskListItem];
 }>();
 
 const router = useRouter();
@@ -24,6 +30,10 @@ const isBlocked = computed(() =>
 function openTask() {
   router.push({ name: "task-detail", params: { id: props.task.id } });
 }
+
+function deleteTask() {
+  emit("delete", props.task);
+}
 </script>
 
 <template>
@@ -37,7 +47,18 @@ function openTask() {
   >
     <div class="task-card-header">
       <h3>{{ task.title }}</h3>
-      <StatusBadge :status="task.status" />
+      <div class="task-card-actions">
+        <button
+          v-if="canDelete"
+          type="button"
+          class="task-card-delete"
+          :disabled="deleting"
+          @click.stop="deleteTask"
+        >
+          {{ deleting ? "删除中" : "删除" }}
+        </button>
+        <StatusBadge :status="task.status" />
+      </div>
     </div>
 
     <p v-if="task.description" class="task-card-description">{{ task.description }}</p>

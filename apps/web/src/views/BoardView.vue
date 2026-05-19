@@ -20,6 +20,7 @@ const auth = useAuthStore();
 const tasksStore = useTasksStore();
 const route = useRoute();
 const createLoading = ref(false);
+const deletingTaskId = ref("");
 const createError = ref("");
 const selectedWeekIndex = ref(1);
 const selectedCategory = ref<TaskCategory>("ALL");
@@ -76,6 +77,28 @@ async function submitTask() {
     createError.value = tasksStore.error || "任务创建失败，请稍后重试";
   } finally {
     createLoading.value = false;
+  }
+}
+
+async function deleteTask(task: { id: string; title: string }) {
+  if (deletingTaskId.value || !auth.isOwner) {
+    return;
+  }
+
+  const confirmed = window.confirm(`确定要删除任务“${task.title}”吗？此操作不可恢复。`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  deletingTaskId.value = task.id;
+
+  try {
+    await tasksStore.deleteTask(task.id);
+  } catch {
+    // The store owns the page-level error message.
+  } finally {
+    deletingTaskId.value = "";
   }
 }
 
@@ -176,7 +199,14 @@ onMounted(() => {
         </header>
 
         <div class="task-preview-row">
-          <TaskCard v-for="task in previewTasks" :key="task.id" :task="task" />
+          <TaskCard
+            v-for="task in previewTasks"
+            :key="task.id"
+            :task="task"
+            :can-delete="auth.isOwner"
+            :deleting="deletingTaskId === task.id"
+            @delete="deleteTask"
+          />
         </div>
       </section>
     </section>

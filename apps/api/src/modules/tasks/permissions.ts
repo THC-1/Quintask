@@ -12,6 +12,10 @@ export function canWriteTask(role: UserRoleType, isCreatingSuggestion: boolean):
   return role === UserRole.MEMBER && isCreatingSuggestion;
 }
 
+export function canDeleteTask(role: UserRoleType): boolean {
+  return role === UserRole.OWNER;
+}
+
 export function canWriteComment(role: UserRoleType): boolean {
   return role === UserRole.OWNER || role === UserRole.MEMBER;
 }

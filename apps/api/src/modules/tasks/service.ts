@@ -12,9 +12,12 @@ import { prisma } from "../../db.js";
 import { errors } from "../../lib/errors.js";
 import {
   getUnsupportedTaskUpdateFields,
+  hasSelfDependency,
   normalizeCreateTaskRelations,
   normalizeCreateTaskScalars,
+  normalizeUpdateTaskRelations,
 } from "./input-boundaries.js";
+import { canDeleteTask } from "./permissions.js";
 import { canChangeTaskStatus } from "./task-state.js";
 
 const safeUserSelect = {
@@ -213,9 +216,20 @@ export async function updateTask(id: string, input: unknown, currentUser: Curren
     throw errors.notFound("任务不存在。");
   }
 
+  const relations = normalizeUpdateTaskRelations({
+    tagIds: parsed.data.tagIds,
+    dependencyIds: parsed.data.dependencyIds,
+  });
+
+  if (hasSelfDependency(id, relations.dependencyIds)) {
+    throw errors.validation("任务不能依赖自身。");
+  }
+
   await validateTaskRelations({
     assigneeId: parsed.data.assigneeId,
     milestoneId: parsed.data.milestoneId,
+    tagIds: relations.tagIds,
+    dependencyIds: relations.dependencyIds,
   });
 
   const data: Prisma.TaskUncheckedUpdateInput = {};
@@ -245,15 +259,41 @@ export async function updateTask(id: string, input: unknown, currentUser: Curren
     data.dueDate = dueDate;
   }
 
-  return prisma.task.update({
-    where: { id },
-    data,
-    include: {
-      assignee: { select: safeUserSelect },
-      milestone: true,
-      dependencies: { include: { dependsOnTask: true } },
-      tags: { include: { tag: true } },
-    },
+  return prisma.$transaction(async (tx) => {
+    await tx.task.update({
+      where: { id },
+      data,
+    });
+
+    if (relations.tagIds !== undefined) {
+      await tx.taskTag.deleteMany({ where: { taskId: id } });
+
+      if (relations.tagIds.length > 0) {
+        await tx.taskTag.createMany({
+          data: relations.tagIds.map((tagId) => ({ taskId: id, tagId })),
+        });
+      }
+    }
+
+    if (relations.dependencyIds !== undefined) {
+      await tx.taskDependency.deleteMany({ where: { taskId: id } });
+
+      if (relations.dependencyIds.length > 0) {
+        await tx.taskDependency.createMany({
+          data: relations.dependencyIds.map((dependsOnTaskId) => ({ taskId: id, dependsOnTaskId })),
+        });
+      }
+    }
+
+    return tx.task.findUnique({
+      where: { id },
+      include: {
+        assignee: { select: safeUserSelect },
+        milestone: true,
+        dependencies: { include: { dependsOnTask: true } },
+        tags: { include: { tag: true } },
+      },
+    });
   });
 }
 
@@ -308,4 +348,25 @@ export async function changeTaskStatus(id: string, input: unknown, currentUser: 
       completedAt: isDone ? new Date() : null,
     },
   });
+}
+
+export async function deleteTask(id: string, currentUser: CurrentUser) {
+  if (!canDeleteTask(currentUser.role)) {
+    throw errors.forbidden();
+  }
+
+  const task = await prisma.task.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!task) {
+    throw errors.notFound("任务不存在。");
+  }
+
+  await prisma.task.delete({
+    where: { id },
+  });
+
+  return { id };
 }

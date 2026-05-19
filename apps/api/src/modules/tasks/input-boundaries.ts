@@ -14,7 +14,12 @@ type TaskCreateRelationInput = {
   dependencyIds: string[];
 };
 
-const unsupportedTaskUpdateFields = ["status", "tagIds", "dependencyIds"] as const;
+type TaskUpdateRelationInput = {
+  tagIds?: string[];
+  dependencyIds?: string[];
+};
+
+const unsupportedTaskUpdateFields = ["status"] as const;
 
 export function getUnsupportedTaskUpdateFields(input: object) {
   return unsupportedTaskUpdateFields.filter((field) => Object.hasOwn(input, field));
@@ -50,4 +55,15 @@ export function normalizeCreateTaskRelations(input: TaskCreateRelationInput) {
     tagIds: [...new Set(input.tagIds)],
     dependencyIds: [...new Set(input.dependencyIds)],
   };
+}
+
+export function normalizeUpdateTaskRelations(input: TaskUpdateRelationInput) {
+  return {
+    tagIds: input.tagIds === undefined ? undefined : [...new Set(input.tagIds)],
+    dependencyIds: input.dependencyIds === undefined ? undefined : [...new Set(input.dependencyIds)],
+  };
+}
+
+export function hasSelfDependency(taskId: string, dependencyIds: string[] | undefined) {
+  return dependencyIds?.includes(taskId) ?? false;
 }

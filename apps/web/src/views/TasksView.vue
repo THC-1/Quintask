@@ -4,6 +4,7 @@ import { RouterLink, useRoute, useRouter } from "vue-router";
 
 import AppLayout from "../components/AppLayout.vue";
 import TaskCard from "../components/TaskCard.vue";
+import { useAuthStore } from "../stores/auth";
 import { useTasksStore } from "../stores/tasks";
 import {
   categoryFromQuery,
@@ -16,9 +17,11 @@ import {
 
 const route = useRoute();
 const router = useRouter();
+const auth = useAuthStore();
 const tasksStore = useTasksStore();
 const selectedWeekIndex = ref(1);
 const selectedCategory = ref<TaskCategory>("ALL");
+const deletingTaskId = ref("");
 
 function weekIndexFromQuery(value: unknown) {
   const index = Number(value);
@@ -60,6 +63,28 @@ function selectCategory(category: TaskCategory) {
 
 function handleCategoryChange(event: Event) {
   selectCategory((event.target as HTMLSelectElement).value as TaskCategory);
+}
+
+async function deleteTask(task: { id: string; title: string }) {
+  if (deletingTaskId.value || !auth.isOwner) {
+    return;
+  }
+
+  const confirmed = window.confirm(`确定要删除任务“${task.title}”吗？此操作不可恢复。`);
+
+  if (!confirmed) {
+    return;
+  }
+
+  deletingTaskId.value = task.id;
+
+  try {
+    await tasksStore.deleteTask(task.id);
+  } catch {
+    // The store owns the page-level error message.
+  } finally {
+    deletingTaskId.value = "";
+  }
 }
 
 onMounted(() => {
@@ -113,7 +138,14 @@ onMounted(() => {
       <p v-else-if="visibleTasks.length === 0" class="state-text">当前周暂无任务。</p>
 
       <div v-else class="tasks-card-grid">
-        <TaskCard v-for="task in visibleTasks" :key="task.id" :task="task" />
+        <TaskCard
+          v-for="task in visibleTasks"
+          :key="task.id"
+          :task="task"
+          :can-delete="auth.isOwner"
+          :deleting="deletingTaskId === task.id"
+          @delete="deleteTask"
+        />
       </div>
     </section>
   </AppLayout>

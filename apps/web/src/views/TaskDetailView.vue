@@ -4,8 +4,38 @@ import { RouterLink, useRoute } from "vue-router";
 
 import AppLayout from "../components/AppLayout.vue";
 import StatusBadge from "../components/StatusBadge.vue";
+import { apiFetch } from "../api/client";
 import { useAuthStore } from "../stores/auth";
-import { useTasksStore, type CommentType, type TaskStatus } from "../stores/tasks";
+import { useTasksStore, type CommentType, type TaskPriority, type TaskStatus, type UpdateTaskInput } from "../stores/tasks";
+
+type AssignableUser = {
+  id: string;
+  name: string;
+  role: "OWNER" | "MEMBER" | "TEACHER";
+  isActive: boolean;
+};
+
+type MilestoneOption = {
+  id: string;
+  title: string;
+};
+
+type TagOption = {
+  id: string;
+  name: string;
+  color: string;
+};
+
+type TaskEditForm = {
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  assigneeId: string;
+  milestoneId: string;
+  dueDate: string;
+  tagIds: string[];
+  dependencyIds: string[];
+};
 
 const route = useRoute();
 const auth = useAuthStore();
@@ -14,19 +44,42 @@ const actionLoading = ref(false);
 const subtaskLoadingId = ref("");
 const commentLoading = ref(false);
 const subtaskCreateLoading = ref(false);
+const isEditingTask = ref(false);
+const editLoading = ref(false);
+const editOptionsLoading = ref(false);
 const commentError = ref("");
 const subtaskCreateError = ref("");
+const editError = ref("");
 const commentContent = ref("");
 const commentType = ref<CommentType>("COMMENT");
 const subtaskTitle = ref("");
+const editUsers = ref<AssignableUser[]>([]);
+const editMilestones = ref<MilestoneOption[]>([]);
+const editTags = ref<TagOption[]>([]);
+const editForm = ref<TaskEditForm>({
+  title: "",
+  description: "",
+  priority: "MEDIUM",
+  assigneeId: "",
+  milestoneId: "",
+  dueDate: "",
+  tagIds: [],
+  dependencyIds: [],
+});
 
 const taskId = computed(() => String(route.params.id));
 const task = computed(() => tasksStore.currentTask);
 const isAssignee = computed(() => task.value?.assignee?.id === auth.user?.id);
+const canEditTask = computed(() => auth.isOwner && Boolean(task.value));
 const canMoveAssignedTask = computed(() => auth.isOwner || isAssignee.value);
 const canEditSubtasks = computed(() => !auth.isTeacher && (auth.isOwner || isAssignee.value));
 const canCreateComment = computed(() => Boolean(auth.user) && !auth.isTeacher);
 const isOwnerReview = computed(() => auth.isOwner && task.value?.status === "IN_REVIEW");
+const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
+  { value: "HIGH", label: "高" },
+  { value: "MEDIUM", label: "中" },
+  { value: "LOW", label: "低" },
+];
 const commentTypeOptions = computed<Array<{ type: CommentType; label: string }>>(() => {
   const options: Array<{ type: CommentType; label: string }> = [
     { type: "COMMENT", label: "评论" },
@@ -62,6 +115,7 @@ const availableActions = computed<Array<{ status: TaskStatus; label: string; ton
 
   return [];
 });
+const dependencyOptions = computed(() => tasksStore.tasks.filter((item) => item.id !== taskId.value));
 
 function formatDate(value: string | null | undefined) {
   if (!value) {
@@ -85,6 +139,84 @@ function formatDateTime(value: string) {
   }).format(new Date(value));
 }
 
+function toDateInput(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function toApiDate(value: string) {
+  return value ? new Date(`${value}T00:00:00`).toISOString() : null;
+}
+
+function resetEditForm() {
+  if (!task.value) {
+    return;
+  }
+
+  editForm.value = {
+    title: task.value.title,
+    description: task.value.description,
+    priority: task.value.priority,
+    assigneeId: task.value.assignee?.id ?? "",
+    milestoneId: task.value.milestone?.id ?? "",
+    dueDate: toDateInput(task.value.dueDate),
+    tagIds: task.value.tags.map((item) => item.tag.id),
+    dependencyIds: task.value.dependencies.map((dependency) => dependency.dependsOnTask.id),
+  };
+}
+
+function updateSelection(field: "tagIds" | "dependencyIds", id: string, event: Event) {
+  const checked = (event.target as HTMLInputElement).checked;
+  const current = editForm.value[field];
+
+  editForm.value[field] = checked ? [...new Set([...current, id])] : current.filter((item) => item !== id);
+}
+
+async function loadEditOptions() {
+  if (!auth.isOwner) {
+    return;
+  }
+
+  editOptionsLoading.value = true;
+
+  try {
+    const [users, milestones, tags] = await Promise.all([
+      apiFetch<AssignableUser[]>("/users"),
+      apiFetch<MilestoneOption[]>("/milestones"),
+      apiFetch<TagOption[]>("/tags"),
+      tasksStore.loadTasks(),
+    ]);
+
+    editUsers.value = users.filter((user) => user.isActive && user.role !== "TEACHER");
+    editMilestones.value = milestones;
+    editTags.value = tags;
+  } catch {
+    editError.value = tasksStore.error || "编辑选项加载失败，请稍后重试";
+  } finally {
+    editOptionsLoading.value = false;
+  }
+}
+
+async function openTaskEditor() {
+  if (!task.value || !canEditTask.value) {
+    return;
+  }
+
+  editError.value = "";
+  resetEditForm();
+  isEditingTask.value = true;
+  await loadEditOptions();
+}
+
+function cancelTaskEdit() {
+  editError.value = "";
+  isEditingTask.value = false;
+  resetEditForm();
+}
+
 async function loadTask() {
   await tasksStore.loadTask(taskId.value).catch(() => undefined);
 }
@@ -102,6 +234,41 @@ async function changeStatus(status: TaskStatus) {
     // The store owns the Chinese error message shown in the page.
   } finally {
     actionLoading.value = false;
+  }
+}
+
+async function submitTaskEdit() {
+  if (!task.value || editLoading.value) {
+    return;
+  }
+
+  editError.value = "";
+
+  if (!editForm.value.title.trim()) {
+    editError.value = "请输入任务标题";
+    return;
+  }
+
+  editLoading.value = true;
+
+  const input: UpdateTaskInput = {
+    title: editForm.value.title.trim(),
+    description: editForm.value.description.trim(),
+    priority: editForm.value.priority,
+    assigneeId: editForm.value.assigneeId || null,
+    milestoneId: editForm.value.milestoneId || null,
+    dueDate: toApiDate(editForm.value.dueDate),
+    tagIds: editForm.value.tagIds,
+    dependencyIds: editForm.value.dependencyIds.filter((id) => id !== task.value?.id),
+  };
+
+  try {
+    await tasksStore.updateTask(task.value.id, input);
+    isEditingTask.value = false;
+  } catch {
+    editError.value = tasksStore.error || "任务更新失败，请稍后重试";
+  } finally {
+    editLoading.value = false;
   }
 }
 
@@ -179,6 +346,7 @@ async function submitSubtask() {
 onMounted(loadTask);
 
 watch(taskId, () => {
+  isEditingTask.value = false;
   loadTask();
 });
 </script>
@@ -200,20 +368,123 @@ watch(taskId, () => {
           <StatusBadge :status="task.status" />
         </div>
 
-        <div v-if="availableActions.length > 0" class="detail-actions">
+        <div v-if="availableActions.length > 0 || canEditTask" class="detail-actions">
           <button
-            v-for="action in availableActions"
-            :key="action.status"
+            v-if="canEditTask && !isEditingTask"
             type="button"
-            :class="['primary-button', { 'secondary-button': action.tone === 'secondary' }]"
-            :disabled="actionLoading"
-            @click="changeStatus(action.status)"
+            class="primary-button secondary-button"
+            :disabled="editOptionsLoading"
+            @click="openTaskEditor"
           >
-            {{ actionLoading ? "处理中..." : action.label }}
+            {{ editOptionsLoading ? "加载编辑项..." : "编辑任务" }}
           </button>
+          <template v-if="!isEditingTask">
+            <button
+              v-for="action in availableActions"
+              :key="action.status"
+              type="button"
+              :class="['primary-button', { 'secondary-button': action.tone === 'secondary' }]"
+              :disabled="actionLoading"
+              @click="changeStatus(action.status)"
+            >
+              {{ actionLoading ? "处理中..." : action.label }}
+            </button>
+          </template>
         </div>
 
-        <div class="detail-grid">
+        <form v-if="isEditingTask" class="detail-panel task-edit-form" @submit.prevent="submitTaskEdit">
+          <div class="task-edit-grid">
+            <label class="task-edit-field">
+              任务标题
+              <input v-model="editForm.title" type="text" />
+            </label>
+
+            <label class="task-edit-field">
+              优先级
+              <select v-model="editForm.priority">
+                <option v-for="option in priorityOptions" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+
+            <label class="task-edit-field">
+              执行人
+              <select v-model="editForm.assigneeId" :disabled="editOptionsLoading">
+                <option value="">未分配</option>
+                <option v-for="user in editUsers" :key="user.id" :value="user.id">
+                  {{ user.name }}
+                </option>
+              </select>
+            </label>
+
+            <label class="task-edit-field">
+              里程碑
+              <select v-model="editForm.milestoneId" :disabled="editOptionsLoading">
+                <option value="">未关联</option>
+                <option v-for="milestone in editMilestones" :key="milestone.id" :value="milestone.id">
+                  {{ milestone.title }}
+                </option>
+              </select>
+            </label>
+
+            <label class="task-edit-field">
+              截止日期
+              <input v-model="editForm.dueDate" type="date" />
+            </label>
+
+            <label class="task-edit-field task-edit-wide">
+              任务描述
+              <textarea v-model="editForm.description" rows="5"></textarea>
+            </label>
+          </div>
+
+          <fieldset class="task-edit-options">
+            <legend>标签</legend>
+            <p v-if="editOptionsLoading" class="state-text">正在加载标签...</p>
+            <p v-else-if="editTags.length === 0" class="state-text">暂无可选标签。</p>
+            <template v-else>
+              <label v-for="tag in editTags" :key="tag.id" class="task-edit-option">
+                <input
+                  type="checkbox"
+                  :checked="editForm.tagIds.includes(tag.id)"
+                  @change="updateSelection('tagIds', tag.id, $event)"
+                />
+                <span class="task-tag" :style="{ '--tag-color': tag.color }">{{ tag.name }}</span>
+              </label>
+            </template>
+          </fieldset>
+
+          <fieldset class="task-edit-options">
+            <legend>依赖任务</legend>
+            <p v-if="editOptionsLoading" class="state-text">正在加载任务...</p>
+            <p v-else-if="dependencyOptions.length === 0" class="state-text">暂无可选依赖任务。</p>
+            <template v-else>
+              <label v-for="option in dependencyOptions" :key="option.id" class="task-edit-option">
+                <input
+                  type="checkbox"
+                  :checked="editForm.dependencyIds.includes(option.id)"
+                  @change="updateSelection('dependencyIds', option.id, $event)"
+                />
+                <span>{{ option.title }}</span>
+                <StatusBadge :status="option.status" />
+              </label>
+            </template>
+          </fieldset>
+
+          <p v-if="editError" class="form-error" role="alert">{{ editError }}</p>
+
+          <div class="task-edit-actions">
+            <button type="submit" class="primary-button" :disabled="editLoading || editOptionsLoading">
+              {{ editLoading ? "保存中..." : "保存修改" }}
+            </button>
+            <button type="button" class="primary-button secondary-button" :disabled="editLoading" @click="cancelTaskEdit">
+              取消
+            </button>
+          </div>
+        </form>
+
+        <div v-else class="detail-grid">
           <section class="detail-panel detail-main">
             <h2>任务描述</h2>
             <p class="description-text">{{ task.description || "暂无描述。" }}</p>
