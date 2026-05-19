@@ -24,13 +24,17 @@ export type WeekWindow = {
 function dayNumberFromDate(date: Date) {
   const diffMs = date.getTime() - WEEK1_START.getTime();
   if (diffMs < 0) return null;
-  return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
+  const totalDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  const fullWeeks = Math.floor(totalDays / 7);
+  const dayInWeek = totalDays % 7; // 0=Mon … 4=Fri, 5=Sat, 6=Sun
+  if (dayInWeek >= 5) return null; // weekend
+  return fullWeeks * 5 + dayInWeek + 1;
 }
 
 export function getCurrentWeekIndex(today?: Date): number {
   const dayNumber = dayNumberFromDate(today ?? new Date());
   if (dayNumber === null) return 0;
-  const index = Math.floor((dayNumber - 1) / 7);
+  const index = Math.floor((dayNumber - 1) / 5);
   return Math.min(index, 3);
 }
 
@@ -39,8 +43,8 @@ export function getWeekWindows(today?: Date): WeekWindow[] {
 
   const weeks: WeekWindow[] = [];
   for (let i = 0; i < 4; i++) {
-    const startDay = i * 7 + 1;
-    const endDay = (i + 1) * 7;
+    const startDay = i * 5 + 1;
+    const endDay = (i + 1) * 5;
     weeks.push({
       label: i === currentIndex ? "本周任务" : `第 ${i + 1} 周`,
       hint: `Day ${startDay}-${endDay}`,

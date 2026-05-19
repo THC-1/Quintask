@@ -24,7 +24,7 @@ const deletingTaskId = ref("");
 const weekWindows = computed(() => getWeekWindows());
 const selectedWeekIndex = ref(getCurrentWeekIndex());
 const selectedCategory = ref<TaskCategory>("ALL");
-const currentWeekStartDay = computed(() => getCurrentWeekIndex() * 7 + 1);
+const currentWeekStartDay = computed(() => getCurrentWeekIndex() * 5 + 1);
 
 function weekIndexFromQuery(value: unknown) {
   const index = Number(value);
