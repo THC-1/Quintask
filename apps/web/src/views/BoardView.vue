@@ -11,8 +11,9 @@ import {
   dayNumberFromTask,
   filterTasksByCategory,
   filterTasksByWeek,
+  getCurrentWeekIndex,
+  getWeekWindows,
   taskCategoryOptions,
-  weekWindows,
   type TaskCategory,
 } from "../utils/taskSchedule";
 
@@ -20,19 +21,28 @@ const auth = useAuthStore();
 const tasksStore = useTasksStore();
 const route = useRoute();
 const deletingTaskId = ref("");
-const selectedWeekIndex = ref(1);
+const weekWindows = computed(() => getWeekWindows());
+const selectedWeekIndex = ref(getCurrentWeekIndex());
 const selectedCategory = ref<TaskCategory>("ALL");
+const currentWeekStartDay = computed(() => getCurrentWeekIndex() * 7 + 1);
+
 function weekIndexFromQuery(value: unknown) {
   const index = Number(value);
-  return Number.isInteger(index) && index >= 0 && index < weekWindows.length ? index : 1;
+  return Number.isInteger(index) && index >= 0 && index < weekWindows.value.length ? index : getCurrentWeekIndex();
 }
 
-const selectedWeek = computed(() => weekWindows[selectedWeekIndex.value]);
+const selectedWeek = computed(() => weekWindows.value[selectedWeekIndex.value]);
 const weekTasks = computed(() => filterTasksByWeek(tasksStore.tasks, selectedWeek.value));
 const visibleTasks = computed(() => filterTasksByCategory(weekTasks.value, selectedCategory.value));
 const previewTasks = computed(() => visibleTasks.value.slice(0, 4));
 const completedEarlierCount = computed(
-  () => tasksStore.tasks.filter((task) => (dayNumberFromTask(task) ?? 99) <= 7 && task.status === "DONE").length,
+  () =>
+    tasksStore.tasks.filter(
+      (task) => {
+        const day = dayNumberFromTask(task);
+        return day !== null && day < currentWeekStartDay.value && task.status === "DONE";
+      },
+    ).length,
 );
 const categoryLabel = computed(
   () => taskCategoryOptions.find((option) => option.value === selectedCategory.value)?.label ?? "全部分类",
@@ -43,7 +53,7 @@ async function deleteTask(task: { id: string; title: string }) {
     return;
   }
 
-  const confirmed = window.confirm(`确定要删除任务“${task.title}”吗？此操作不可恢复。`);
+  const confirmed = window.confirm(`确定要删除任务"${task.title}"吗？此操作不可恢复。`);
 
   if (!confirmed) {
     return;
@@ -75,7 +85,7 @@ onMounted(() => {
           <p class="eyebrow">饭点盲盒任务排期</p>
           <h1>{{ selectedWeek.label }}</h1>
           <p class="page-subtitle">
-            默认只展示一周任务；Day 7 及以前已完成，后续任务可提前切换查看。
+            默认只展示一周任务；Day 1-{{ currentWeekStartDay - 1 }} 已完成，后续任务可提前切换查看。
           </p>
         </div>
         <span class="page-count">{{ visibleTasks.length }} 个任务</span>
@@ -96,7 +106,7 @@ onMounted(() => {
 
       <div class="schedule-note">
         <strong>已完成基线</strong>
-        <span>Day 1-7 已完成 {{ completedEarlierCount }} 个任务，本周从 Day 8 开始继续推进。</span>
+        <span>Day 1-{{ currentWeekStartDay - 1 }} 已完成 {{ completedEarlierCount }} 个任务，本周从 Day {{ currentWeekStartDay }} 开始继续推进。</span>
       </div>
 
       <div class="task-filter-bar">
@@ -109,11 +119,10 @@ onMounted(() => {
           </select>
         </label>
         <span>{{ categoryLabel }}：{{ visibleTasks.length }} / {{ weekTasks.length }} 个任务</span>
+        <RouterLink v-if="auth.isOwner" class="primary-button view-more-button" :to="{ name: 'task-create' }">
+          创建任务
+        </RouterLink>
       </div>
-
-      <RouterLink v-if="auth.isOwner" class="primary-button" :to="{ name: 'task-create' }">
-        创建任务
-      </RouterLink>
 
       <p v-if="tasksStore.error" class="form-error" role="alert">{{ tasksStore.error }}</p>
       <p v-else-if="tasksStore.loading" class="state-text">正在加载任务...</p>

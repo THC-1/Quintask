@@ -12,32 +12,45 @@ export const taskCategoryOptions = [
 
 export type TaskCategory = (typeof taskCategoryOptions)[number]["value"];
 
-export const weekWindows = [
-  {
-    label: "第 1 周",
-    hint: "Day 1-5",
-    startDay: 1,
-    endDay: 5,
-  },
-  {
-    label: "本周任务",
-    hint: "Day 8-10",
-    startDay: 8,
-    endDay: 10,
-  },
-  {
-    label: "提前查看第 3 周",
-    hint: "Day 11-15",
-    startDay: 11,
-    endDay: 15,
-  },
-  {
-    label: "提前查看第 4 周",
-    hint: "Day 16-20",
-    startDay: 16,
-    endDay: 20,
-  },
-];
+const WEEK1_START = new Date(2026, 4, 11); // May 11, 2026 (Monday)
+
+export type WeekWindow = {
+  label: string;
+  hint: string;
+  startDay: number;
+  endDay: number;
+};
+
+function dayNumberFromDate(date: Date) {
+  const diffMs = date.getTime() - WEEK1_START.getTime();
+  if (diffMs < 0) return null;
+  return Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1;
+}
+
+export function getCurrentWeekIndex(today?: Date): number {
+  const dayNumber = dayNumberFromDate(today ?? new Date());
+  if (dayNumber === null) return 0;
+  const index = Math.floor((dayNumber - 1) / 7);
+  return Math.min(index, 3);
+}
+
+export function getWeekWindows(today?: Date): WeekWindow[] {
+  const currentIndex = getCurrentWeekIndex(today);
+
+  const weeks: WeekWindow[] = [];
+  for (let i = 0; i < 4; i++) {
+    const startDay = i * 7 + 1;
+    const endDay = (i + 1) * 7;
+    weeks.push({
+      label: i === currentIndex ? "本周任务" : `第 ${i + 1} 周`,
+      hint: `Day ${startDay}-${endDay}`,
+      startDay,
+      endDay,
+    });
+  }
+
+  return weeks;
+}
 
 export function dayNumberFromTask(task: TaskListItem) {
   const titleMatch = task.title.match(/^Day\s+(\d+)/i);
@@ -58,11 +71,16 @@ export function sortTasksBySchedule(tasks: TaskListItem[]) {
   });
 }
 
-export function filterTasksByWeek(tasks: TaskListItem[], week: (typeof weekWindows)[number]) {
+export function filterTasksByWeek(tasks: TaskListItem[], week: WeekWindow, today?: Date) {
+  const currentWeek = getWeekWindows(today)[getCurrentWeekIndex(today)];
+
   return sortTasksBySchedule(
     tasks.filter((task) => {
       const dayNumber = dayNumberFromTask(task);
-      return dayNumber !== null && dayNumber >= week.startDay && dayNumber <= week.endDay;
+      if (dayNumber === null) {
+        return week.startDay === currentWeek.startDay;
+      }
+      return dayNumber >= week.startDay && dayNumber <= week.endDay;
     }),
   );
 }
