@@ -67,7 +67,11 @@ async function submitTask() {
       title: createForm.title.trim(),
       description: createForm.description.trim(),
       priority: createForm.priority,
+      assigneeId: "",
+      milestoneId: "",
       dueDate: createForm.dueDate ? new Date(`${createForm.dueDate}T00:00:00`).toISOString() : null,
+      tagIds: [],
+      dependencyIds: [],
     });
     createForm.title = "";
     createForm.description = "";
